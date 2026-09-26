@@ -363,6 +363,13 @@
       cursor: pointer;
     }
 
+    .btn-action.active-mode {
+      background: rgba(0, 198, 255, 0.2);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(0, 198, 255, 0.3);
+    }
+
     .btn-primary {
       background: var(--accent-gradient);
       border: none;
@@ -430,6 +437,9 @@
       <img src="icon.png" alt="DocScan Icon" />
       <h1>DocScan KB</h1>
     </div>
+    <button id="pwaInstallBtn" class="btn-action btn-primary hidden" style="padding: 6px 14px; font-size: 0.85rem;" onclick="app.promptPWAInstall()">
+      📲 Install App
+    </button>
   </header>
 
   <!-- Main Home Dashboard -->
@@ -514,7 +524,7 @@
     <div class="cropper-header">
       <button class="btn-icon" onclick="app.closeCropper()">✕</button>
       <div style="font-weight:600;" id="cropRatioLabel">Pinch & Drag Crop Window</div>
-      <button class="btn-action btn-primary" onclick="app.processAndCompress()">Save KB</button>
+      <div></div>
     </div>
 
     <div class="cropper-workspace" id="cropperWorkspace">
@@ -531,10 +541,21 @@
         <input type="range" id="fineRotateSlider" min="-45" max="45" value="0" step="0.5" style="width: 100%; accent-color: var(--accent); cursor: pointer;" oninput="app.setFineRotation(this.value)" />
       </div>
 
+      <!-- Mode Toggle: Move Image vs Scale Crop Box -->
+      <div style="display: flex; justify-content: center; gap: 8px; width: 100%;">
+        <button id="modeMoveImgBtn" class="btn-action active-mode" style="flex: 1; justify-content: center; font-size: 0.8rem;" onclick="app.setControlMode('image')">🖐️ Move/Zoom Image</button>
+        <button id="modeResizeBoxBtn" class="btn-action" style="flex: 1; justify-content: center; font-size: 0.8rem;" onclick="app.setControlMode('box')">📐 Scale/Resize Box</button>
+      </div>
+
       <div class="action-row">
         <button class="btn-action" onclick="app.rotateCanvas(-90)">↺ 90° Left</button>
         <button class="btn-action" onclick="app.rotateCanvas(90)">↻ 90° Right</button>
         <button class="btn-action" onclick="app.resetCropTransform()">🔍 Reset</button>
+      </div>
+
+      <!-- Prominent Primary Action Buttons -->
+      <div style="display: flex; gap: 10px; width: 100%; margin-top: 4px;">
+        <button class="btn-action btn-primary" style="flex: 1; justify-content: center; padding: 12px; font-size: 1rem;" onclick="app.processAndCompress('download')">📥 Download JPG (under 50KB)</button>
       </div>
     </div>
   </div>
@@ -579,6 +600,8 @@
         this.scale = 1;
         this.panX = 0;
         this.panY = 0;
+        this.controlMode = 'image'; // 'image' or 'box'
+        this.customCropScale = 0.85;
 
         // Touch gesture state
         this.isDragging = false;
@@ -593,6 +616,12 @@
         this.compressedFileName = 'scanned_doc.jpg';
 
         this.initEventListeners();
+      }
+
+      setControlMode(mode) {
+        this.controlMode = mode;
+        document.getElementById('modeMoveImgBtn').classList.toggle('active-mode', mode === 'image');
+        document.getElementById('modeResizeBoxBtn').classList.toggle('active-mode', mode === 'box');
       }
 
       get totalRotation() {
@@ -749,47 +778,47 @@
       }
 
       drawCropFrame(ctx, cw, ch) {
-        let frameW = cw * 0.85;
-        let frameH = ch * 0.85;
+        let baseW = cw * (this.customCropScale || 0.85);
+        let baseH = ch * (this.customCropScale || 0.85);
 
         if (this.currentRatio === '3:4') {
-          frameH = frameW * (4 / 3);
-          if (frameH > ch * 0.8) {
-            frameH = ch * 0.8;
-            frameW = frameH * (3 / 4);
+          baseH = baseW * (4 / 3);
+          if (baseH > ch * 0.9) {
+            baseH = ch * 0.9;
+            baseW = baseH * (3 / 4);
           }
         } else if (this.currentRatio === '16:10') {
-          frameH = frameW * (10 / 16);
-          if (frameH > ch * 0.8) {
-            frameH = ch * 0.8;
-            frameW = frameH * (16 / 10);
+          baseH = baseW * (10 / 16);
+          if (baseH > ch * 0.9) {
+            baseH = ch * 0.9;
+            baseW = baseH * (16 / 10);
           }
         }
 
-        const fx = (cw - frameW) / 2;
-        const fy = (ch - frameH) / 2;
+        const fx = (cw - baseW) / 2;
+        const fy = (ch - baseH) / 2;
 
-        this.cropBox = { x: fx, y: fy, w: frameW, h: frameH };
+        this.cropBox = { x: fx, y: fy, w: baseW, h: baseH };
 
         // Dim outside crop box
         ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
         ctx.fillRect(0, 0, cw, fy);
         ctx.fillRect(0, 0, fx, ch);
-        ctx.fillRect(fx + frameW, 0, cw - (fx + frameW), ch);
-        ctx.fillRect(0, fy + frameH, cw, ch - (fy + frameH));
+        ctx.fillRect(fx + baseW, 0, cw - (fx + baseW), ch);
+        ctx.fillRect(0, fy + baseH, cw, ch - (fy + baseH));
 
         // Border
-        ctx.strokeStyle = '#00f2fe';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(fx, fy, frameW, frameH);
+        ctx.strokeStyle = this.controlMode === 'box' ? '#ff007f' : '#00f2fe';
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(fx, fy, baseW, baseH);
 
         // Corner Handles
-        ctx.fillStyle = '#00f2fe';
-        const hSize = 10;
+        ctx.fillStyle = this.controlMode === 'box' ? '#ff007f' : '#00f2fe';
+        const hSize = 12;
         ctx.fillRect(fx - hSize/2, fy - hSize/2, hSize, hSize);
-        ctx.fillRect(fx + frameW - hSize/2, fy - hSize/2, hSize, hSize);
-        ctx.fillRect(fx - hSize/2, fy + frameH - hSize/2, hSize, hSize);
-        ctx.fillRect(fx + frameW - hSize/2, fy + frameH - hSize/2, hSize, hSize);
+        ctx.fillRect(fx + baseW - hSize/2, fy - hSize/2, hSize, hSize);
+        ctx.fillRect(fx - hSize/2, fy + baseH - hSize/2, hSize, hSize);
+        ctx.fillRect(fx + baseW - hSize/2, fy + baseH - hSize/2, hSize, hSize);
       }
 
       initEventListeners() {
@@ -799,12 +828,20 @@
           this.isDragging = true;
           this.startX = e.clientX - this.panX;
           this.startY = e.clientY - this.panY;
+          this.startCropScale = this.customCropScale || 0.85;
+          this.startTouchY = e.clientY;
         });
 
         workspace.addEventListener('pointermove', (e) => {
           if (this.isDragging && e.isPrimary) {
-            this.panX = e.clientX - this.startX;
-            this.panY = e.clientY - this.startY;
+            if (this.controlMode === 'box') {
+              // Drag vertically to scale crop box
+              const deltaY = (this.startTouchY - e.clientY) / 300;
+              this.customCropScale = Math.max(0.2, Math.min(0.95, this.startCropScale + deltaY));
+            } else {
+              this.panX = e.clientX - this.startX;
+              this.panY = e.clientY - this.startY;
+            }
             this.renderCropper();
           }
         });
@@ -824,18 +861,25 @@
               e.touches[1].clientX - e.touches[0].clientX
             ) * (180 / Math.PI);
             this.initialFineRot = this.fineRotation;
+            this.startCropScale = this.customCropScale || 0.85;
           }
         });
 
         workspace.addEventListener('touchmove', (e) => {
           if (e.touches.length === 2) {
-            // Pinch Zoom
             const dist = Math.hypot(
               e.touches[0].clientX - e.touches[1].clientX,
               e.touches[0].clientY - e.touches[1].clientY
             );
             const factor = dist / this.pinchDist;
-            this.scale = Math.max(0.5, Math.min(5, this.scale * factor));
+
+            if (this.controlMode === 'box') {
+              // Pinch to scale crop box directly
+              this.customCropScale = Math.max(0.2, Math.min(0.95, this.startCropScale * factor));
+            } else {
+              // Pinch Zoom image
+              this.scale = Math.max(0.5, Math.min(5, this.scale * factor));
+            }
             this.pinchDist = dist;
 
             // Touch Rotate Fine-Tuning
@@ -855,52 +899,57 @@
         });
       }
 
-      // Size-Cap Multi-Pass Compressor Algorithm
-      async processAndCompress() {
+      // Optimized Size-Cap Multi-Pass Compressor Algorithm (Super Fast)
+      async processAndCompress(actionTarget = 'download') {
         const sizeCapKB = parseFloat(document.getElementById('sizeCapInput').value) || 50;
         const maxSizeBytes = sizeCapKB * 1024;
 
-        // Render cropped window to full resolution canvas
-        const exportCanvas = document.createElement('canvas');
+        // Render cropped window
         const box = this.cropBox;
-
-        exportCanvas.width = box.w * 2; // high res sample
-        exportCanvas.height = box.h * 2;
-        const ctx = exportCanvas.getContext('2d');
-
         const canvas = document.getElementById('cropCanvas');
-        ctx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, exportCanvas.width, exportCanvas.height);
 
-        // Binary-Search Quality & Dynamic Downscaling loop
+        // Estimate target scale directly based on crop dimensions to avoid heavy loops
+        let targetW = box.w * 1.5;
+        let targetH = box.h * 1.5;
+
+        // If target size cap is small (e.g. <= 50KB), pre-scale resolution smartly
+        if (sizeCapKB <= 50) {
+          targetW = Math.min(800, box.w);
+          targetH = Math.min(1000, box.h);
+        }
+
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = targetW;
+        exportCanvas.height = targetH;
+        const ctx = exportCanvas.getContext('2d');
+        ctx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, targetW, targetH);
+
         let currentCanvas = exportCanvas;
-        let blob = await this.compressToBlob(currentCanvas, 0.90);
+        let quality = 0.70;
+        let blob = await this.compressToBlob(currentCanvas, quality);
 
-        let scaleFactor = 1.0;
-        while (blob.size > maxSizeBytes && currentCanvas.width > 120) {
-          // Downscale resolution step by step
-          scaleFactor *= 0.85;
+        // Fast 2-step adjustment if still over target cap
+        if (blob.size > maxSizeBytes) {
+          quality = 0.45;
+          blob = await this.compressToBlob(currentCanvas, quality);
+        }
+
+        while (blob.size > maxSizeBytes && currentCanvas.width > 200) {
           const scaledCanvas = document.createElement('canvas');
-          scaledCanvas.width = Math.round(exportCanvas.width * scaleFactor);
-          scaledCanvas.height = Math.round(exportCanvas.height * scaleFactor);
+          scaledCanvas.width = Math.round(currentCanvas.width * 0.75);
+          scaledCanvas.height = Math.round(currentCanvas.height * 0.75);
           const sCtx = scaledCanvas.getContext('2d');
-          sCtx.drawImage(exportCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+          sCtx.drawImage(currentCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
           currentCanvas = scaledCanvas;
-
-          // Quality binary optimization
-          let minQ = 0.15, maxQ = 0.85;
-          for (let i = 0; i < 4; i++) {
-            const midQ = (minQ + maxQ) / 2;
-            blob = await this.compressToBlob(currentCanvas, midQ);
-            if (blob.size > maxSizeBytes) {
-              maxQ = midQ;
-            } else {
-              minQ = midQ;
-            }
-          }
+          blob = await this.compressToBlob(currentCanvas, 0.50);
         }
 
         this.compressedBlob = blob;
         this.closeCropper();
+
+        if (actionTarget === 'download') {
+          this.downloadImage();
+        }
 
         // Update preview modal stats
         const previewUrl = URL.createObjectURL(blob);
