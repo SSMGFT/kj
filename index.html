@@ -620,8 +620,11 @@
 
       setControlMode(mode) {
         this.controlMode = mode;
-        document.getElementById('modeMoveImgBtn').classList.toggle('active-mode', mode === 'image');
-        document.getElementById('modeResizeBoxBtn').classList.toggle('active-mode', mode === 'box');
+        const btnImg = document.getElementById('modeMoveImgBtn');
+        const btnBox = document.getElementById('modeResizeBoxBtn');
+        if (btnImg) btnImg.classList.toggle('active-mode', mode === 'image');
+        if (btnBox) btnBox.classList.toggle('active-mode', mode === 'box');
+        this.renderCropper();
       }
 
       get totalRotation() {
@@ -698,6 +701,8 @@
           this.scale = 1;
           this.panX = 0;
           this.panY = 0;
+          this.customCropScale = 0.85;
+          this.setControlMode('image');
           const slider = document.getElementById('fineRotateSlider');
           if (slider) slider.value = 0;
           const label = document.getElementById('angleValueDisplay');
