@@ -1,0 +1,18 @@
+{
+  "name": "DocScan KB - Mobile Document Scanner",
+  "short_name": "DocScan",
+  "description": "Scan, crop, rotate and shrink document photos under exact KB size caps.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

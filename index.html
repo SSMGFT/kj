@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>DocScan KB - Mobile Scanner & Compressor</title>
+  <meta name="description" content="Capture, crop, rotate & compress documents strictly under specified KB limit." />
+  <meta name="theme-color" content="#0d1117" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #090d16 0%, #111827 50%, #0d1527 100%);
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --accent: #00f2fe;
+      --accent-gradient: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+      --accent-glow: 0 0 20px rgba(0, 198, 255, 0.4);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-family);
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    header {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(13, 17, 23, 0.7);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #ffffff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .container {
+      flex: 1;
+      padding: 20px;
+      max-width: 500px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    /* Settings Card */
+    .settings-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      backdrop-filter: blur(10px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .setting-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .setting-label {
+      font-weight: 500;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .size-input-wrapper {
+      display: flex;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      padding: 6px 12px;
+      width: 130px;
+    }
+
+    .size-input-wrapper input {
+      width: 100%;
+      background: transparent;
+      border: none;
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 1.1rem;
+      text-align: right;
+      outline: none;
+      font-family: inherit;
+    }
+
+    .size-input-wrapper span {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-left: 6px;
+      font-weight: 600;
+    }
+
+    /* Presets Grid */
+    .presets-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .preset-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 16px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preset-card:hover, .preset-card:active {
+      transform: translateY(-3px);
+      border-color: var(--accent);
+      box-shadow: var(--accent-glow);
+    }
+
+    .preset-icon-box {
+      width: 54px;
+      height: 64px;
+      border: 2px dashed rgba(255, 255, 255, 0.3);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.02);
+      transition: all 0.25s ease;
+    }
+
+    .preset-card[data-ratio="3:4"] .preset-icon-box { width: 36px; height: 48px; }
+    .preset-card[data-ratio="16:10"] .preset-icon-box { width: 52px; height: 32px; }
+    .preset-card[data-ratio="custom"] .preset-icon-box { width: 44px; height: 44px; border-style: dotted; }
+
+    .preset-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .preset-ratio {
+      font-size: 0.75rem;
+      color: var(--accent);
+      background: rgba(0, 198, 255, 0.1);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* Modal / Overlay Screens */
+    .screen-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000000;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .screen-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Camera View */
+    .camera-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+    }
+
+    .btn-icon {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      backdrop-filter: blur(8px);
+    }
+
+    .camera-viewport {
+      flex: 1;
+      position: relative;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #videoFeed {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .camera-controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 30px 20px;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+    }
+
+    .shutter-btn {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: transparent;
+      border: 4px solid #ffffff;
+      padding: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .shutter-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: var(--accent-gradient);
+      box-shadow: var(--accent-glow);
+    }
+
+    /* Cropper View */
+    .cropper-header {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0d1117;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .cropper-workspace {
+      flex: 1;
+      position: relative;
+      background: #05070a;
+      touch-action: none;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #cropCanvas {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+    }
+
+    .cropper-toolbar {
+      padding: 16px 20px;
+      background: #0d1117;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .action-row {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    .btn-action {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      border: none;
+      box-shadow: var(--accent-glow);
+    }
+
+    /* Result Preview Modal */
+    .preview-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      max-width: 90%;
+      max-height: 85vh;
+      width: 400px;
+      margin: auto;
+    }
+
+    .preview-img-box {
+      max-height: 50vh;
+      overflow: hidden;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--card-border);
+    }
+
+    .preview-img-box img {
+      max-width: 100%;
+      max-height: 50vh;
+      display: block;
+      object-fit: contain;
+    }
+
+    .stat-badge {
+      display: flex;
+      gap: 12px;
+    }
+
+    .badge {
+      background: rgba(0, 198, 255, 0.15);
+      border: 1px solid rgba(0, 198, 255, 0.3);
+      color: var(--accent);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    /* Utilities */
+    .hidden { display: none !important; }
+    
+    .file-input-hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- App Header -->
+  <header>
+    <div class="brand">
+      <img src="icon.png" alt="DocScan Icon" />
+      <h1>DocScan KB</h1>
+    </div>
+  </header>
+
+  <!-- Main Home Dashboard -->
+  <div class="container">
+    
+    <!-- Size Cap Configuration -->
+    <div>
+      <div class="section-title">Size Restriction Target</div>
+      <div class="settings-card">
+        <div class="setting-item">
+          <div class="setting-label">
+            ⚡ Max File Size Limit
+          </div>
+          <div class="size-input-wrapper">
+            <input type="number" id="sizeCapInput" value="50" min="5" max="5000" />
+            <span>KB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scanner Presets -->
+    <div>
+      <div class="section-title">Select Document Aspect Preset</div>
+      <div class="presets-grid">
+        
+        <!-- Preset 1: 3:4 Photo -->
+        <div class="preset-card" data-ratio="3:4" onclick="app.startScan('3:4')">
+          <div class="preset-icon-box">📄</div>
+          <div class="preset-title">Photo</div>
+          <div class="preset-ratio">3 : 4</div>
+        </div>
+
+        <!-- Preset 2: 16:10 Card -->
+        <div class="preset-card" data-ratio="16:10" onclick="app.startScan('16:10')">
+          <div class="preset-icon-box">💳</div>
+          <div class="preset-title">ID Card</div>
+          <div class="preset-ratio">16 : 10</div>
+        </div>
+
+        <!-- Preset 3: Custom -->
+        <div class="preset-card" data-ratio="custom" onclick="app.startScan('custom')">
+          <div class="preset-icon-box">✂️</div>
+          <div class="preset-title">Custom</div>
+          <div class="preset-ratio">Freeform</div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Quick File Picker Alternative -->
+    <div style="text-align: center; margin-top: 10px;">
+      <label class="btn-action" style="display: inline-flex; width: auto;" for="galleryInput">
+        📁 Or Pick Image from Gallery
+      </label>
+      <input type="file" id="galleryInput" class="file-input-hidden" accept="image/*" onchange="app.handleFileSelect(event)" />
+      <!-- Direct native camera fallback input -->
+      <input type="file" id="cameraDirectInput" class="file-input-hidden" accept="image/*" capture="environment" onchange="app.handleFileSelect(event)" />
+    </div>
+
+  </div>
+
+  <!-- Screen 1: Camera Viewfinder Overlay -->
+  <div class="screen-overlay" id="cameraScreen">
+    <div class="camera-header">
+      <button class="btn-icon" onclick="app.closeCamera()">✕</button>
+      <div style="font-weight: 600; color: #fff;" id="cameraPresetLabel">Scanner Active</div>
+      <button class="btn-icon" onclick="app.switchCamera()">🔄</button>
+    </div>
+    <div class="camera-viewport">
+      <video id="videoFeed" autoplay playsinline></video>
+    </div>
+    <div class="camera-controls">
+      <button class="shutter-btn" onclick="app.capturePhoto()">
+        <div class="shutter-inner"></div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen 2: Crop, Rotate & Touch Zoom Workspace Overlay -->
+  <div class="screen-overlay" id="cropperScreen">
+    <div class="cropper-header">
+      <button class="btn-icon" onclick="app.closeCropper()">✕</button>
+      <div style="font-weight:600;" id="cropRatioLabel">Pinch & Drag Crop Window</div>
+      <button class="btn-action btn-primary" onclick="app.processAndCompress()">Save KB</button>
+    </div>
+
+    <div class="cropper-workspace" id="cropperWorkspace">
+      <canvas id="cropCanvas"></canvas>
+    </div>
+
+    <div class="cropper-toolbar">
+      <!-- Fine-tune Rotation Slider & Angle Indicator -->
+      <div style="display: flex; flex-direction: column; gap: 6px; width: 100%;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted);">
+          <span>📐 Fine-tune Alignment</span>
+          <span id="angleValueDisplay" style="color: var(--accent); font-weight: 700;">0°</span>
+        </div>
+        <input type="range" id="fineRotateSlider" min="-45" max="45" value="0" step="0.5" style="width: 100%; accent-color: var(--accent); cursor: pointer;" oninput="app.setFineRotation(this.value)" />
+      </div>
+
+      <div class="action-row">
+        <button class="btn-action" onclick="app.rotateCanvas(-90)">↺ 90° Left</button>
+        <button class="btn-action" onclick="app.rotateCanvas(90)">↻ 90° Right</button>
+        <button class="btn-action" onclick="app.resetCropTransform()">🔍 Reset</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Screen 3: Compression Result & Download Modal -->
+  <div class="screen-overlay" id="resultScreen" style="background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);">
+    <div class="preview-card">
+      <h3 style="color: var(--accent);">Document Ready!</h3>
+      <div class="preview-img-box">
+        <img id="previewImg" src="" alt="Compressed Scan" />
+      </div>
+      <div class="stat-badge">
+        <div class="badge" id="statSize">Size: 42 KB</div>
+        <div class="badge" id="statResolution">Res: 800 x 600</div>
+      </div>
+      <div style="display: flex; gap: 10px; width: 100%;">
+        <button class="btn-action" style="flex: 1;" onclick="app.closeResult()">Close</button>
+        <button class="btn-action btn-primary" style="flex: 1;" onclick="app.downloadImage()">📥 Download</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // PWA Service Worker Registration
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW reg error:', err));
+      });
+    }
+
+    // Main DocScan PWA Engine
+    class DocScanApp {
+      constructor() {
+        this.currentRatio = '3:4';
+        this.cameraStream = null;
+        this.facingMode = 'environment';
+        
+        // Image & Crop state variables
+        this.rawImage = new Image();
+        this.baseRotation = 0; // 90 deg steps
+        this.fineRotation = 0; // -45 to +45 fine tune
+        this.scale = 1;
+        this.panX = 0;
+        this.panY = 0;
+
+        // Touch gesture state
+        this.isDragging = false;
+        this.startX = 0;
+        this.startY = 0;
+        this.pinchDist = 0;
+        this.initialTouchAngle = 0;
+        this.initialFineRot = 0;
+
+        // Result blob cached for download
+        this.compressedBlob = null;
+        this.compressedFileName = 'scanned_doc.jpg';
+
+        this.initEventListeners();
+      }
+
+      get totalRotation() {
+        return this.baseRotation + this.fineRotation;
+      }
+
+      startScan(ratio) {
+        this.currentRatio = ratio;
+        this.openCamera();
+      }
+
+      // Camera Stream Logic
+      async openCamera() {
+        const cameraScreen = document.getElementById('cameraScreen');
+        document.getElementById('cameraPresetLabel').innerText = `Scan Mode: ${this.currentRatio.toUpperCase()}`;
+        cameraScreen.classList.add('active');
+
+        try {
+          if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(t => t.stop());
+          }
+          this.cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: this.facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false
+          });
+          document.getElementById('videoFeed').srcObject = this.cameraStream;
+        } catch (err) {
+          console.warn('WebRTC camera error or insecure origin (file://). Triggering native camera/file picker...', err);
+          this.closeCamera();
+          // Trigger native Android camera app directly
+          document.getElementById('cameraDirectInput').click();
+        }
+      }
+
+      switchCamera() {
+        this.facingMode = (this.facingMode === 'environment') ? 'user' : 'environment';
+        this.openCamera();
+      }
+
+      closeCamera() {
+        if (this.cameraStream) {
+          this.cameraStream.getTracks().forEach(t => t.stop());
+          this.cameraStream = null;
+        }
+        document.getElementById('cameraScreen').classList.remove('active');
+      }
+
+      capturePhoto() {
+        const video = document.getElementById('videoFeed');
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = video.videoWidth || 1280;
+        tempCanvas.height = video.videoHeight || 720;
+        const ctx = tempCanvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+
+        this.closeCamera();
+        this.loadRawImage(tempCanvas.toDataURL('image/jpeg', 0.95));
+      }
+
+      handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => this.loadRawImage(e.target.result);
+          reader.readAsDataURL(file);
+        }
+      }
+
+      loadRawImage(dataUrl) {
+        this.rawImage = new Image();
+        this.rawImage.onload = () => {
+          this.baseRotation = 0;
+          this.fineRotation = 0;
+          this.scale = 1;
+          this.panX = 0;
+          this.panY = 0;
+          const slider = document.getElementById('fineRotateSlider');
+          if (slider) slider.value = 0;
+          const label = document.getElementById('angleValueDisplay');
+          if (label) label.innerText = '0°';
+          this.openCropper();
+        };
+        this.rawImage.src = dataUrl;
+      }
+
+      // Interactive Canvas Cropper
+      openCropper() {
+        document.getElementById('cropRatioLabel').innerText = `Preset (${this.currentRatio}) - Drag/Pinch & Rotate`;
+        document.getElementById('cropperScreen').classList.add('active');
+        this.renderCropper();
+      }
+
+      closeCropper() {
+        document.getElementById('cropperScreen').classList.remove('active');
+      }
+
+      rotateCanvas(deg) {
+        this.baseRotation = (this.baseRotation + deg) % 360;
+        this.renderCropper();
+      }
+
+      setFineRotation(val) {
+        this.fineRotation = parseFloat(val);
+        const label = document.getElementById('angleValueDisplay');
+        if (label) label.innerText = `${this.totalRotation.toFixed(1)}°`;
+        this.renderCropper();
+      }
+
+      resetCropTransform() {
+        this.baseRotation = 0;
+        this.fineRotation = 0;
+        this.scale = 1;
+        this.panX = 0;
+        this.panY = 0;
+        const slider = document.getElementById('fineRotateSlider');
+        if (slider) slider.value = 0;
+        const label = document.getElementById('angleValueDisplay');
+        if (label) label.innerText = '0°';
+        this.renderCropper();
+      }
+
+      renderCropper() {
+        const canvas = document.getElementById('cropCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('cropperWorkspace');
+
+        const cw = container.clientWidth - 20;
+        const ch = container.clientHeight - 20;
+        canvas.width = cw;
+        canvas.height = ch;
+
+        ctx.clearRect(0, 0, cw, ch);
+
+        // Draw Transformed Image
+        ctx.save();
+        ctx.translate(cw / 2 + this.panX, ch / 2 + this.panY);
+        ctx.rotate((this.totalRotation * Math.PI) / 180);
+        ctx.scale(this.scale, this.scale);
+
+        const imgRatio = this.rawImage.width / this.rawImage.height;
+        let drawW = cw;
+        let drawH = cw / imgRatio;
+
+        if (drawH > ch) {
+          drawH = ch;
+          drawW = ch * imgRatio;
+        }
+
+        ctx.drawImage(this.rawImage, -drawW / 2, -drawH / 2, drawW, drawH);
+        ctx.restore();
+
+        // Overlay Ratio Mask Box
+        this.drawCropFrame(ctx, cw, ch);
+      }
+
+      drawCropFrame(ctx, cw, ch) {
+        let frameW = cw * 0.85;
+        let frameH = ch * 0.85;
+
+        if (this.currentRatio === '3:4') {
+          frameH = frameW * (4 / 3);
+          if (frameH > ch * 0.8) {
+            frameH = ch * 0.8;
+            frameW = frameH * (3 / 4);
+          }
+        } else if (this.currentRatio === '16:10') {
+          frameH = frameW * (10 / 16);
+          if (frameH > ch * 0.8) {
+            frameH = ch * 0.8;
+            frameW = frameH * (16 / 10);
+          }
+        }
+
+        const fx = (cw - frameW) / 2;
+        const fy = (ch - frameH) / 2;
+
+        this.cropBox = { x: fx, y: fy, w: frameW, h: frameH };
+
+        // Dim outside crop box
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+        ctx.fillRect(0, 0, cw, fy);
+        ctx.fillRect(0, 0, fx, ch);
+        ctx.fillRect(fx + frameW, 0, cw - (fx + frameW), ch);
+        ctx.fillRect(0, fy + frameH, cw, ch - (fy + frameH));
+
+        // Border
+        ctx.strokeStyle = '#00f2fe';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(fx, fy, frameW, frameH);
+
+        // Corner Handles
+        ctx.fillStyle = '#00f2fe';
+        const hSize = 10;
+        ctx.fillRect(fx - hSize/2, fy - hSize/2, hSize, hSize);
+        ctx.fillRect(fx + frameW - hSize/2, fy - hSize/2, hSize, hSize);
+        ctx.fillRect(fx - hSize/2, fy + frameH - hSize/2, hSize, hSize);
+        ctx.fillRect(fx + frameW - hSize/2, fy + frameH - hSize/2, hSize, hSize);
+      }
+
+      initEventListeners() {
+        const workspace = document.getElementById('cropperWorkspace');
+
+        workspace.addEventListener('pointerdown', (e) => {
+          this.isDragging = true;
+          this.startX = e.clientX - this.panX;
+          this.startY = e.clientY - this.panY;
+        });
+
+        workspace.addEventListener('pointermove', (e) => {
+          if (this.isDragging && e.isPrimary) {
+            this.panX = e.clientX - this.startX;
+            this.panY = e.clientY - this.startY;
+            this.renderCropper();
+          }
+        });
+
+        workspace.addEventListener('pointerup', () => { this.isDragging = false; });
+        workspace.addEventListener('pointercancel', () => { this.isDragging = false; });
+
+        // Touch Pinch-to-Zoom & Touch Rotation
+        workspace.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 2) {
+            this.pinchDist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            this.initialTouchAngle = Math.atan2(
+              e.touches[1].clientY - e.touches[0].clientY,
+              e.touches[1].clientX - e.touches[0].clientX
+            ) * (180 / Math.PI);
+            this.initialFineRot = this.fineRotation;
+          }
+        });
+
+        workspace.addEventListener('touchmove', (e) => {
+          if (e.touches.length === 2) {
+            // Pinch Zoom
+            const dist = Math.hypot(
+              e.touches[0].clientX - e.touches[1].clientX,
+              e.touches[0].clientY - e.touches[1].clientY
+            );
+            const factor = dist / this.pinchDist;
+            this.scale = Math.max(0.5, Math.min(5, this.scale * factor));
+            this.pinchDist = dist;
+
+            // Touch Rotate Fine-Tuning
+            const currentTouchAngle = Math.atan2(
+              e.touches[1].clientY - e.touches[0].clientY,
+              e.touches[1].clientX - e.touches[0].clientX
+            ) * (180 / Math.PI);
+            const deltaAngle = currentTouchAngle - this.initialTouchAngle;
+            
+            let newFineRot = this.initialFineRot + deltaAngle;
+            // Clamp within -45 to +45
+            newFineRot = Math.max(-45, Math.min(45, newFineRot));
+            this.setFineRotation(newFineRot);
+            const slider = document.getElementById('fineRotateSlider');
+            if (slider) slider.value = newFineRot;
+          }
+        });
+      }
+
+      // Size-Cap Multi-Pass Compressor Algorithm
+      async processAndCompress() {
+        const sizeCapKB = parseFloat(document.getElementById('sizeCapInput').value) || 50;
+        const maxSizeBytes = sizeCapKB * 1024;
+
+        // Render cropped window to full resolution canvas
+        const exportCanvas = document.createElement('canvas');
+        const box = this.cropBox;
+
+        exportCanvas.width = box.w * 2; // high res sample
+        exportCanvas.height = box.h * 2;
+        const ctx = exportCanvas.getContext('2d');
+
+        const canvas = document.getElementById('cropCanvas');
+        ctx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, exportCanvas.width, exportCanvas.height);
+
+        // Binary-Search Quality & Dynamic Downscaling loop
+        let currentCanvas = exportCanvas;
+        let blob = await this.compressToBlob(currentCanvas, 0.90);
+
+        let scaleFactor = 1.0;
+        while (blob.size > maxSizeBytes && currentCanvas.width > 120) {
+          // Downscale resolution step by step
+          scaleFactor *= 0.85;
+          const scaledCanvas = document.createElement('canvas');
+          scaledCanvas.width = Math.round(exportCanvas.width * scaleFactor);
+          scaledCanvas.height = Math.round(exportCanvas.height * scaleFactor);
+          const sCtx = scaledCanvas.getContext('2d');
+          sCtx.drawImage(exportCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
+          currentCanvas = scaledCanvas;
+
+          // Quality binary optimization
+          let minQ = 0.15, maxQ = 0.85;
+          for (let i = 0; i < 4; i++) {
+            const midQ = (minQ + maxQ) / 2;
+            blob = await this.compressToBlob(currentCanvas, midQ);
+            if (blob.size > maxSizeBytes) {
+              maxQ = midQ;
+            } else {
+              minQ = midQ;
+            }
+          }
+        }
+
+        this.compressedBlob = blob;
+        this.closeCropper();
+
+        // Update preview modal stats
+        const previewUrl = URL.createObjectURL(blob);
+        document.getElementById('previewImg').src = previewUrl;
+        document.getElementById('statSize').innerText = `Size: ${(blob.size / 1024).toFixed(1)} KB (Cap: ${sizeCapKB} KB)`;
+        document.getElementById('statResolution').innerText = `Res: ${currentCanvas.width} x ${currentCanvas.height}`;
+        document.getElementById('resultScreen').classList.add('active');
+      }
+
+      compressToBlob(canvas, quality) {
+        return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+      }
+
+      closeResult() {
+        document.getElementById('resultScreen').classList.remove('active');
+      }
+
+      downloadImage() {
+        if (!this.compressedBlob) return;
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(this.compressedBlob);
+        link.download = `scan_${Date.now()}.jpg`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    }
+
+    const app = new DocScanApp();
+  </script>
+</body>
+</html>
