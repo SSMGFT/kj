@@ -899,64 +899,52 @@
         });
       }
 
-      // Optimized Size-Cap Multi-Pass Compressor Algorithm (Super Fast)
+      // Optimized Size-Cap Multi-Pass Compressor Algorithm (Super Fast & Reliable)
       async processAndCompress(actionTarget = 'download') {
         const sizeCapKB = parseFloat(document.getElementById('sizeCapInput').value) || 50;
         const maxSizeBytes = sizeCapKB * 1024;
 
-        // Render cropped window
+        // Render cropped area to dedicated export canvas
         const box = this.cropBox;
         const canvas = document.getElementById('cropCanvas');
 
-        // Estimate target scale directly based on crop dimensions to avoid heavy loops
-        let targetW = box.w * 1.5;
-        let targetH = box.h * 1.5;
-
-        // If target size cap is small (e.g. <= 50KB), pre-scale resolution smartly
-        if (sizeCapKB <= 50) {
-          targetW = Math.min(800, box.w);
-          targetH = Math.min(1000, box.h);
-        }
-
+        // Draw cropped portion from source canvas
         const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = targetW;
-        exportCanvas.height = targetH;
+        exportCanvas.width = Math.max(10, Math.round(box.w));
+        exportCanvas.height = Math.max(10, Math.round(box.h));
         const ctx = exportCanvas.getContext('2d');
-        ctx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, targetW, targetH);
+        ctx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, exportCanvas.width, exportCanvas.height);
 
         let currentCanvas = exportCanvas;
-        let quality = 0.70;
+        let quality = 0.75;
         let blob = await this.compressToBlob(currentCanvas, quality);
 
-        // Fast 2-step adjustment if still over target cap
-        if (blob.size > maxSizeBytes) {
-          quality = 0.45;
-          blob = await this.compressToBlob(currentCanvas, quality);
-        }
-
-        while (blob.size > maxSizeBytes && currentCanvas.width > 200) {
+        // Fast downscaling step if over size cap
+        while (blob.size > maxSizeBytes && currentCanvas.width > 120) {
+          quality = Math.max(0.2, quality - 0.15);
           const scaledCanvas = document.createElement('canvas');
-          scaledCanvas.width = Math.round(currentCanvas.width * 0.75);
-          scaledCanvas.height = Math.round(currentCanvas.height * 0.75);
+          scaledCanvas.width = Math.round(currentCanvas.width * 0.80);
+          scaledCanvas.height = Math.round(currentCanvas.height * 0.80);
           const sCtx = scaledCanvas.getContext('2d');
           sCtx.drawImage(currentCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
           currentCanvas = scaledCanvas;
-          blob = await this.compressToBlob(currentCanvas, 0.50);
+          blob = await this.compressToBlob(currentCanvas, quality);
         }
 
         this.compressedBlob = blob;
         this.closeCropper();
-
-        if (actionTarget === 'download') {
-          this.downloadImage();
-        }
 
         // Update preview modal stats
         const previewUrl = URL.createObjectURL(blob);
         document.getElementById('previewImg').src = previewUrl;
         document.getElementById('statSize').innerText = `Size: ${(blob.size / 1024).toFixed(1)} KB (Cap: ${sizeCapKB} KB)`;
         document.getElementById('statResolution').innerText = `Res: ${currentCanvas.width} x ${currentCanvas.height}`;
-        document.getElementById('resultScreen').classList.add('active');
+
+        if (actionTarget === 'download') {
+          this.downloadImage();
+        } else {
+          document.getElementById('resultScreen').classList.add('active');
+        }
       }
 
       compressToBlob(canvas, quality) {
@@ -969,12 +957,16 @@
 
       downloadImage() {
         if (!this.compressedBlob) return;
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(this.compressedBlob);
-        link.download = `scan_${Date.now()}.jpg`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const link = document.createElement('a');
+          link.href = e.target.result;
+          link.download = `DocScan_${Date.now()}.jpg`;
+          document.body.appendChild(link);
+          link.click();
+          setTimeout(() => document.body.removeChild(link), 100);
+        };
+        reader.readAsDataURL(this.compressedBlob);
       }
     }
 
