@@ -711,7 +711,11 @@
       openCropper() {
         document.getElementById('cropRatioLabel').innerText = `Preset (${this.currentRatio}) - Drag/Pinch & Rotate`;
         document.getElementById('cropperScreen').classList.add('active');
-        this.renderCropper();
+        // Double render request to ensure container layout bounding box is populated before drawing
+        requestAnimationFrame(() => {
+          this.renderCropper();
+          requestAnimationFrame(() => this.renderCropper());
+        });
       }
 
       closeCropper() {
@@ -748,8 +752,8 @@
         const ctx = canvas.getContext('2d');
         const container = document.getElementById('cropperWorkspace');
 
-        const cw = container.clientWidth - 20;
-        const ch = container.clientHeight - 20;
+        const cw = container.clientWidth > 40 ? container.clientWidth - 20 : 360;
+        const ch = container.clientHeight > 40 ? container.clientHeight - 20 : 480;
         canvas.width = cw;
         canvas.height = ch;
 
@@ -825,7 +829,9 @@
         const workspace = document.getElementById('cropperWorkspace');
 
         workspace.addEventListener('pointerdown', (e) => {
+          if (e.pointerType === 'touch' && !e.isPrimary) return;
           this.isDragging = true;
+          this.activePointerId = e.pointerId;
           this.startX = e.clientX - this.panX;
           this.startY = e.clientY - this.panY;
           this.startCropScale = this.customCropScale || 0.85;
@@ -833,7 +839,7 @@
         });
 
         workspace.addEventListener('pointermove', (e) => {
-          if (this.isDragging && e.isPrimary) {
+          if (this.isDragging && (e.pointerId === this.activePointerId || e.isPrimary)) {
             if (this.controlMode === 'box') {
               // Drag vertically to scale crop box
               const deltaY = (this.startTouchY - e.clientY) / 300;
@@ -852,6 +858,7 @@
         // Touch Pinch-to-Zoom & Touch Rotation
         workspace.addEventListener('touchstart', (e) => {
           if (e.touches.length === 2) {
+            this.isDragging = false; // Disable single pointer drag when pinching
             this.pinchDist = Math.hypot(
               e.touches[0].clientX - e.touches[1].clientX,
               e.touches[0].clientY - e.touches[1].clientY
@@ -862,6 +869,7 @@
             ) * (180 / Math.PI);
             this.initialFineRot = this.fineRotation;
             this.startCropScale = this.customCropScale || 0.85;
+            this.initialScale = this.scale;
           }
         });
 
@@ -877,10 +885,9 @@
               // Pinch to scale crop box directly
               this.customCropScale = Math.max(0.2, Math.min(0.95, this.startCropScale * factor));
             } else {
-              // Pinch Zoom image
-              this.scale = Math.max(0.5, Math.min(5, this.scale * factor));
+              // Smooth Pinch Zoom relative to initial touch scale
+              this.scale = Math.max(0.5, Math.min(5, this.initialScale * factor));
             }
-            this.pinchDist = dist;
 
             // Touch Rotate Fine-Tuning
             const currentTouchAngle = Math.atan2(
@@ -895,6 +902,8 @@
             this.setFineRotation(newFineRot);
             const slider = document.getElementById('fineRotateSlider');
             if (slider) slider.value = newFineRot;
+
+            this.renderCropper();
           }
         });
       }
