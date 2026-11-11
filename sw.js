@@ -1,4 +1,4 @@
-const CACHE_NAME = 'docscan-pwa-v1';
+const CACHE_NAME = 'docscan-pwa-v6';
 const ASSETS = [
   './',
   './index.html',

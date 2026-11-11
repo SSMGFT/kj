@@ -212,6 +212,10 @@
     }
 
     /* Modal / Overlay Screens */
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
     .screen-overlay {
       position: fixed;
       inset: 0;
@@ -446,21 +450,6 @@
   <!-- Main Home Dashboard -->
   <div class="container">
     
-    <!-- Size Cap Configuration -->
-    <div>
-      <div class="section-title">Size Restriction Target</div>
-      <div class="settings-card">
-        <div class="setting-item">
-          <div class="setting-label">
-            ⚡ Max File Size Limit
-          </div>
-          <div class="size-input-wrapper">
-            <input type="number" id="sizeCapInput" value="50" min="5" max="5000" />
-            <span>KB</span>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Scanner Presets -->
     <div>
@@ -472,6 +461,7 @@
           <div class="preset-icon-box">📄</div>
           <div class="preset-title">Photo</div>
           <div class="preset-ratio">3 : 4</div>
+          <div style="font-size:0.65rem;color:var(--accent-secondary);margin-top:4px;">50 KB</div>
         </div>
 
         <!-- Preset 2: 16:10 Card -->
@@ -479,13 +469,15 @@
           <div class="preset-icon-box">💳</div>
           <div class="preset-title">ID Card</div>
           <div class="preset-ratio">16 : 10</div>
+          <div style="font-size:0.65rem;color:var(--accent-secondary);margin-top:4px;">85 KB</div>
         </div>
 
         <!-- Preset 3: Custom -->
-        <div class="preset-card" data-ratio="custom" onclick="app.startScan('custom')">
+        <div class="preset-card" data-ratio="custom" onclick="app.openCustomSetup()">
           <div class="preset-icon-box">✂️</div>
           <div class="preset-title">Custom</div>
           <div class="preset-ratio">Freeform</div>
+          <div style="font-size:0.65rem;color:var(--accent-secondary);margin-top:4px;">Set ratio & size</div>
         </div>
 
       </div>
@@ -501,6 +493,61 @@
       <input type="file" id="cameraDirectInput" class="file-input-hidden" accept="image/*" capture="environment" onchange="app.handleFileSelect(event)" />
     </div>
 
+  </div>
+
+  <!-- Custom Preset Setup Modal -->
+  <div id="customSetupModal" style="
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(0,0,0,0.6); backdrop-filter:blur(8px);
+    align-items:flex-end; justify-content:center;
+  ">
+    <div style="
+      background:#111827; border-radius:20px 20px 0 0;
+      border:1px solid rgba(255,255,255,0.12);
+      padding:24px 20px 36px; width:100%; max-width:500px;
+      animation: slideUp 0.25s ease;
+    ">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <span style="font-weight:700;font-size:1.1rem;color:#fff;">&#9881;&#65039; Custom Settings</span>
+        <button onclick="app.closeCustomSetup()" style="background:none;border:none;color:#aaa;font-size:1.4rem;cursor:pointer;padding:4px 8px;">&#x2715;</button>
+      </div>
+
+      <!-- Ratio Row -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.05em;">ASPECT RATIO (W : H)</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input id="customRatioW" type="number" min="1" max="99" value="4"
+            style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);
+                   background:rgba(255,255,255,0.07);color:#fff;font-size:1.1rem;text-align:center;"
+          />
+          <span style="color:#fff;font-size:1.3rem;font-weight:700;">:</span>
+          <input id="customRatioH" type="number" min="1" max="99" value="3"
+            style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);
+                   background:rgba(255,255,255,0.07);color:#fff;font-size:1.1rem;text-align:center;"
+          />
+        </div>
+      </div>
+
+      <!-- Size Cap Row -->
+      <div style="margin-bottom:24px;">
+        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.05em;">MAX FILE SIZE</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input id="customSizeCap" type="number" min="5" max="5000" value="50"
+            style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);
+                   background:rgba(255,255,255,0.07);color:#fff;font-size:1.1rem;text-align:center;"
+          />
+          <span style="color:#aaa;font-size:1rem;min-width:28px;">KB</span>
+        </div>
+      </div>
+
+      <button onclick="app.launchCustomScan()"
+        style="width:100%;padding:14px;border-radius:12px;border:none;
+               background:linear-gradient(135deg,#6366f1,#8b5cf6);
+               color:#fff;font-size:1rem;font-weight:700;cursor:pointer;
+               box-shadow:0 4px 20px rgba(99,102,241,0.4);">
+        📷 Start Scan
+      </button>
+    </div>
   </div>
 
   <!-- Screen 1: Camera Viewfinder Overlay -->
@@ -631,11 +678,30 @@
 
       startScan(ratio) {
         this.currentRatio = ratio;
-        // Set default size cap per preset
-        const presetDefaults = { '3:4': 50, '16:10': 85, 'custom': 50 };
-        const defaultKB = presetDefaults[ratio] || 50;
-        const sizeInput = document.getElementById('sizeCapInput');
-        sizeInput.value = defaultKB;
+        // Size cap baked into preset — no user input needed
+        const presetSizeCap = { '3:4': 50, '16:10': 85, 'custom': 50 };
+        this.sizeCap = presetSizeCap[ratio] || 50;
+        this.openCamera();
+      }
+
+      openCustomSetup() {
+        const modal = document.getElementById('customSetupModal');
+        modal.style.display = 'flex';
+      }
+
+      closeCustomSetup() {
+        document.getElementById('customSetupModal').style.display = 'none';
+      }
+
+      launchCustomScan() {
+        const w = parseFloat(document.getElementById('customRatioW').value) || 4;
+        const h = parseFloat(document.getElementById('customRatioH').value) || 3;
+        const kb = parseFloat(document.getElementById('customSizeCap').value) || 50;
+        this.customRatioW = w;
+        this.customRatioH = h;
+        this.sizeCap = kb;
+        this.closeCustomSetup();
+        this.currentRatio = 'custom';
         this.openCamera();
       }
 
@@ -803,6 +869,13 @@
             baseH = ch * 0.9;
             baseW = baseH * (16 / 10);
           }
+        } else if (this.currentRatio === 'custom' && this.customRatioW && this.customRatioH) {
+          const r = this.customRatioH / this.customRatioW;
+          baseH = baseW * r;
+          if (baseH > ch * 0.9) {
+            baseH = ch * 0.9;
+            baseW = baseH / r;
+          }
         }
 
         const fx = (cw - baseW) / 2;
@@ -914,46 +987,80 @@
         });
       }
 
-      // Optimized Size-Cap Multi-Pass Compressor Algorithm (Super Fast & Reliable)
+      // Helper: scale a canvas by a factor, returns new canvas
+      scaleCanvas(src, factor) {
+        const dst = document.createElement('canvas');
+        dst.width  = Math.round(src.width  * factor);
+        dst.height = Math.round(src.height * factor);
+        dst.getContext('2d').drawImage(src, 0, 0, dst.width, dst.height);
+        return dst;
+      }
+
+      // Target-size compressor: binary search to hit sizeCap ±5%
+      // If image is too small  → upscale canvas (binary search on scale factor)
+      // If image is too large  → lower JPEG quality (binary search on quality)
       async processAndCompress(actionTarget = 'download') {
-        const sizeCapKB = parseFloat(document.getElementById('sizeCapInput').value) || 50;
-        const maxSizeBytes = sizeCapKB * 1024;
+        const targetKB    = this.sizeCap || 50;
+        const targetBytes = targetKB * 1024;
+        const lowerBound  = targetBytes * 0.95;
+        const upperBound  = targetBytes * 1.05;
 
-        // Render cropped area to dedicated export canvas
-        const box = this.cropBox;
+        // Render cropped area to export canvas (native crop resolution)
+        const box    = this.cropBox;
         const canvas = document.getElementById('cropCanvas');
+        const base   = document.createElement('canvas');
+        base.width   = Math.max(10, Math.round(box.w));
+        base.height  = Math.max(10, Math.round(box.h));
+        base.getContext('2d').drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, base.width, base.height);
 
-        // Draw cropped portion from source canvas
-        const exportCanvas = document.createElement('canvas');
-        exportCanvas.width = Math.max(10, Math.round(box.w));
-        exportCanvas.height = Math.max(10, Math.round(box.h));
-        const ctx = exportCanvas.getContext('2d');
-        ctx.drawImage(canvas, box.x, box.y, box.w, box.h, 0, 0, exportCanvas.width, exportCanvas.height);
+        let finalBlob;
+        let finalCanvas = base;
 
-        let currentCanvas = exportCanvas;
-        let quality = 0.75;
-        let blob = await this.compressToBlob(currentCanvas, quality);
+        const maxBlob = await this.compressToBlob(base, 0.95);
 
-        // Fast downscaling step if over size cap
-        while (blob.size > maxSizeBytes && currentCanvas.width > 120) {
-          quality = Math.max(0.2, quality - 0.15);
-          const scaledCanvas = document.createElement('canvas');
-          scaledCanvas.width = Math.round(currentCanvas.width * 0.80);
-          scaledCanvas.height = Math.round(currentCanvas.height * 0.80);
-          const sCtx = scaledCanvas.getContext('2d');
-          sCtx.drawImage(currentCanvas, 0, 0, scaledCanvas.width, scaledCanvas.height);
-          currentCanvas = scaledCanvas;
-          blob = await this.compressToBlob(currentCanvas, quality);
+        if (maxBlob.size >= lowerBound && maxBlob.size <= upperBound) {
+          // Lucky — already within range at max quality
+          finalBlob = maxBlob;
+
+        } else if (maxBlob.size < lowerBound) {
+          // Image too small even at max quality → upscale canvas
+          // Binary search scale factor between 1 and 8
+          let lo = 1.0, hi = 8.0, bestBlob = maxBlob, bestCanvas = base, bestDiff = Infinity;
+          for (let i = 0; i < 14; i++) {
+            const mid = (lo + hi) / 2;
+            const scaled = this.scaleCanvas(base, mid);
+            const blob   = await this.compressToBlob(scaled, 0.95);
+            const diff   = Math.abs(blob.size - targetBytes);
+            if (diff < bestDiff) { bestDiff = diff; bestBlob = blob; bestCanvas = scaled; }
+            if (blob.size < lowerBound) lo = mid;
+            else if (blob.size > upperBound) hi = mid;
+            else break; // within ±5%
+          }
+          finalBlob   = bestBlob;
+          finalCanvas = bestCanvas;
+
+        } else {
+          // Image too large → reduce JPEG quality via binary search
+          let lo = 0.05, hi = 0.94, bestBlob = maxBlob, bestDiff = Infinity;
+          for (let i = 0; i < 12; i++) {
+            const mid  = (lo + hi) / 2;
+            const blob = await this.compressToBlob(base, mid);
+            const diff = Math.abs(blob.size - targetBytes);
+            if (diff < bestDiff) { bestDiff = diff; bestBlob = blob; }
+            if (blob.size < lowerBound) lo = mid;
+            else if (blob.size > upperBound) hi = mid;
+            else break; // within ±5%
+          }
+          finalBlob = bestBlob;
         }
 
-        this.compressedBlob = blob;
+        this.compressedBlob = finalBlob;
         this.closeCropper();
 
-        // Update preview modal stats
-        const previewUrl = URL.createObjectURL(blob);
-        document.getElementById('previewImg').src = previewUrl;
-        document.getElementById('statSize').innerText = `Size: ${(blob.size / 1024).toFixed(1)} KB (Cap: ${sizeCapKB} KB)`;
-        document.getElementById('statResolution').innerText = `Res: ${currentCanvas.width} x ${currentCanvas.height}`;
+        const actualKB = (finalBlob.size / 1024).toFixed(1);
+        document.getElementById('previewImg').src = URL.createObjectURL(finalBlob);
+        document.getElementById('statSize').innerText = `Size: ${actualKB} KB  (target: ${targetKB} KB)`;
+        document.getElementById('statResolution').innerText = `Res: ${finalCanvas.width} x ${finalCanvas.height}`;
 
         if (actionTarget === 'download') {
           this.downloadImage();
