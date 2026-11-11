@@ -556,7 +556,7 @@
 
       <!-- Prominent Primary Action Buttons -->
       <div style="display: flex; gap: 10px; width: 100%; margin-top: 4px;">
-        <button class="btn-action btn-primary" style="flex: 1; justify-content: center; padding: 12px; font-size: 1rem;" onclick="app.processAndCompress('download')">📥 Download JPG (under 50KB)</button>
+        <button class="btn-action btn-primary" id="downloadBtn" style="flex: 1; justify-content: center; padding: 12px; font-size: 1rem;" onclick="app.processAndCompress('download')">📥 Download JPG</button>
       </div>
     </div>
   </div>
@@ -631,6 +631,11 @@
 
       startScan(ratio) {
         this.currentRatio = ratio;
+        // Set default size cap per preset
+        const presetDefaults = { '3:4': 50, '16:10': 85, 'custom': 50 };
+        const defaultKB = presetDefaults[ratio] || 50;
+        const sizeInput = document.getElementById('sizeCapInput');
+        sizeInput.value = defaultKB;
         this.openCamera();
       }
 
